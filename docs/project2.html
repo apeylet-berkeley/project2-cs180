@@ -4,117 +4,146 @@
 <title>Project 2 — Fun with Filters & Frequencies</title>
 <link rel="stylesheet" href="style.css">
 <style>
-/* mini retouches typographiques */
 .lead{color:var(--muted);max-width:72ch}
-
-
 .subtle{color:#9fb3c8}
-figcaption strong{font-weight:600}
-pre{background:#0f1730;padding:.8rem;border-radius:12px;overflow:auto}
-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 h3{margin-top:1.4rem}
+.figure-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.25rem;margin:.75rem 0}
+.figure-row figure{background:var(--card);border-radius:18px;overflow:hidden;box-shadow:0 10px 24px rgba(0,0,0,.35)}
+.figure-row img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover}
+.figure-row figcaption{padding:.7rem 1rem;color:var(--muted)}
+.figure-row figcaption strong{color:var(--fg)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 </style>
 </head>
 <body>
 <header class="site-header">
   <nav><a href="./index.html">← Home</a></nav>
   <h1>Project 2 — Fun with Filters & Frequencies</h1>
-  <p class="tagline">Antoine Peylet · CS180 — my notes, results, and what actually worked.</p>
+  <p class="tagline">Antoine Peylet · CS180</p>
 </header>
 
 <main class="container">
 
-  <section>
-    <h2>Overview</h2>
-    <p class="lead">
-      Goal: build intuition for spatial filtering and frequency-domain thinking. I implemented a
-      from-scratch 2D convolution, finite differences and DoG, unsharp masking, hybrid images, and
-      multi-resolution blending (Gaussian/Laplacian stacks → the classic “oraple”).
-    </p>
+<section>
+  <h2>Overview</h2>
+  <p class="lead">
+    In this project I built up intuition for spatial filtering and frequency-domain thinking:
+    from-scratch 2D convolution, finite differences and DoG, unsharp masking, hybrid images, and
+    multi-resolution blending via Gaussian/Laplacian stacks (“oraple”). I kept the code minimal (NumPy only).
+  </p>
 </section>
 
-  <section>
-    <h2>Part 1 — Fun with Filters</h2>
+<section>
+  <h2>Part 1 — Fun with Filters</h2>
 
-    <h3>1.1 Finite Differences</h3>
-    <p>
-      I started with simple derivative filters <code>D<sub>x</sub>=[1,-1]</code> and <code>D<sub>y</sub>=D<sub>x</sub><sup>T</sup></code>.
-      Convolving them with the grayscale image gives horizontal/vertical gradients; I combine them as
-      <code>‖∇I‖ = √(I<sub>x</sub><sup>2</sup> + I<sub>y</sub><sup>2</sup>)</code> and threshold to get edges.
-      Padding uses <em>edge</em> mode so output has the same size.
-    </p>
-    <div class="grid">
-      <figure class="card"><img src="assets/p2/gray.jpg" alt="input gray"><figcaption><strong>Input</strong><br><span class="subtle">Grayscale</span></figcaption></figure>
-      <figure class="card"><img src="assets/p2/dx.jpg" alt="Dx"><figcaption><strong>D<sub>x</sub></strong></figcaption></figure>
-      <figure class="card"><img src="assets/p2/dy.jpg" alt="Dy"><figcaption><strong>D<sub>y</sub></strong></figcaption></figure>
-      <figure class="card"><img src="assets/p2/grad.jpg" alt="grad"><figcaption><strong>‖∇I‖</strong></figcaption></figure>
-      <figure class="card"><img src="assets/p2/edges.jpg" alt="edges"><figcaption><strong>Edges (thresholded)</strong></figcaption></figure>
-    </div>
+  <h3>1.1 Convolutions from Scratch</h3>
+  <p>
+    I implemented a naive 2D convolution (padding with edge values so output size matches input).
+    This gives a playground to try any kernel (box blur, Gaussian, Sobel…).
+    Below I mainly use it to compute derivatives and to build the Gaussian/DoG filters used later.
+  </p>
 
-    <h3>1.2 DoG (Derivative of Gaussian)</h3>
-    <p>
-      Direct finite differences are noisy. Smoothing with a Gaussian before taking derivatives helps.
-      I implemented DoG by convolving the Gaussian with <code>D<sub>x</sub></code>/<code>D<sub>y</sub></code> once,
-      then applying those to the image. This yields similar edges but cleaner, especially on texture.
-    </p>
-    <p class="subtle">I kept parameters modest (σ≈1.2) so edges don't vanish.</p>
-  </section>
+  <h3>1.2 Finite Difference Operator</h3>
+  <p>
+    Using <code>D<sub>x</sub>=[1,-1]</code> and <code>D<sub>y</sub>=D<sub>x</sub><sup>T</sup></code>, I compute partial derivatives,
+    gradient magnitude <code>‖∇I‖</code>, then a simple threshold to get a binary edge map.
+    This captures edges but is sensitive to noise and texture.
+  </p>
+  <div class="figure-row">
+    <figure><img src="assets/p2/fd_gray.jpg" alt="gray"><figcaption><strong>Input</strong> (grayscale)</figcaption></figure>
+    <figure><img src="assets/p2/fd_dx.jpg" alt="dx"><figcaption><strong>D<sub>x</sub></strong></figcaption></figure>
+    <figure><img src="assets/p2/fd_dy.jpg" alt="dy"><figcaption><strong>D<sub>y</sub></strong></figcaption></figure>
+    <figure><img src="assets/p2/fd_grad.jpg" alt="grad"><figcaption><strong>‖∇I‖</strong></figcaption></figure>
+    <figure><img src="assets/p2/fd_edges.jpg" alt="edges"><figcaption><strong>Edges</strong> (thresholded)</figcaption></figure>
+  </div>
 
-  <section>
-    <h2>Part 2 — Fun with Frequencies</h2>
+  <h3>1.3 Derivative of Gaussian (DoG) Filter</h3>
+  <p>
+    Finite differences are noisy, so I smooth with a Gaussian first. I form DoG filters by convolving
+    the Gaussian with <code>D<sub>x</sub></code>/<code>D<sub>y</sub></code> once, then applying those to the image.
+    With a modest <span class="subtle">σ≈1.2</span>, edges are cleaner while remaining sharp.
+  </p>
+  <div class="figure-row">
+    <figure><img src="assets/p2/dog_gray.jpg" alt="gray"><figcaption><strong>Input</strong> (grayscale)</figcaption></figure>
+    <figure><img src="assets/p2/dog_dx.jpg" alt="dog dx"><figcaption><strong>DoG<sub>x</sub></strong></figcaption></figure>
+    <figure><img src="assets/p2/dog_dy.jpg" alt="dog dy"><figcaption><strong>DoG<sub>y</sub></strong></figcaption></figure>
+    <figure><img src="assets/p2/dog_grad.jpg" alt="dog grad"><figcaption><strong>‖∇I‖</strong></figcaption></figure>
+    <figure><img src="assets/p2/dog_edges.jpg" alt="dog edges"><figcaption><strong>Edges</strong></figcaption></figure>
+  </div>
+</section>
 
-    <h3>2.1 Unsharp Mask</h3>
-    <p>
-      Sharpening = add back a scaled high-frequency layer:
-      <code>I' = I + α (I − G<sub>σ</sub> * I)</code>.
-      I used <strong>σ = 1.2</strong> and <strong>α = 1.5</strong> which felt crisp without haloing.
-    </p>
-    <div class="grid">
-      <figure class="card"><img src="assets/p2/input.jpg" alt="taj input"><figcaption><strong>Input</strong></figcaption></figure>
-      <figure class="card"><img src="assets/p2/low.jpg" alt="low"><figcaption><strong>Low frequencies</strong></figcaption></figure>
-      <figure class="card"><img src="assets/p2/high.jpg" alt="high"><figcaption><strong>High (scaled for viz)</strong></figcaption></figure>
-      <figure class="card"><img src="assets/p2/sharp.jpg" alt="sharp"><figcaption><strong>Sharpened</strong></figcaption></figure>
-    </div>
+<section>
+  <h2>Part 2 — Fun with Frequencies</h2>
 
-    <h3>2.2 Hybrid Images</h3>
-    <p>
-      Combine low frequencies of one face with high frequencies of another so perception flips with
-      viewing distance. I align the two images, low-pass one and high-pass the other. My defaults:
-      <strong>σ<sub>low</sub>=6</strong>, <strong>σ<sub>high</sub>=6</strong>.
-      When sizes differ, I center-crop to a common field of view.
-    </p>
-    <div class="grid">
-      <figure class="card"><img src="assets/p2/lowpass.jpg" alt="lowpass"><figcaption><strong>Low-pass</strong></figcaption></figure>
-      <figure class="card"><img src="assets/p2/highpass.jpg" alt="highpass"><figcaption><strong>High-pass</strong></figcaption></figure>
-      <figure class="card"><img src="assets/p2/hybrid.jpg" alt="hybrid"><figcaption><strong>Hybrid result</strong></figcaption></figure>
-    </div>
+  <h3>2.1 Unsharp Mask</h3>
+  <p>
+    Sharpening by adding back high frequencies:
+    <code>I' = I + α (I − G<sub>σ</sub>*I)</code>.
+    I found <strong>σ=1.2</strong>, <strong>α=1.5</strong> punchy without halos.
+  </p>
+  <div class="figure-row">
+    <figure><img src="assets/p2/taj_input.jpg" alt="input"><figcaption><strong>Input</strong></figcaption></figure>
+    <figure><img src="assets/p2/taj_low.jpg"   alt="low"><figcaption><strong>Low</strong> (Gaussian)</figcaption></figure>
+    <figure><img src="assets/p2/taj_high.jpg"  alt="high"><figcaption><strong>High</strong> (viz scaled)</figcaption></figure>
+    <figure><img src="assets/p2/taj_sharp.jpg" alt="sharp"><figcaption><strong>Sharpened</strong></figcaption></figure>
+  </div>
 
-    <h3>2.3 Multi-Resolution Blending (Oraple)</h3>
-    <p>
-      I build Gaussian/Laplacian stacks (no black-box library) and blend two images using a blurred
-      mask across the pyramid levels. This hides seams and creates smooth transitions.
-      Params used: <strong>levels=5</strong>, <strong>σ=2</strong>.
-    </p>
-    <div class="grid">
-      <figure class="card"><img src="assets/p2/A.jpg" alt="A"><figcaption><strong>Left image</strong></figcaption></figure>
-      <figure class="card"><img src="assets/p2/B.jpg" alt="B"><figcaption><strong>Right image</strong></figcaption></figure>
-      <figure class="card"><img src="assets/p2/mask.jpg" alt="mask"><figcaption><strong>Blend mask</strong></figcaption></figure>
-      <figure class="card"><img src="assets/p2/blend.jpg" alt="blend"><figcaption><strong>Final blend</strong></figcaption></figure>
-    </div>
-  </section>
+  <h3>2.2 Hybrid Images</h3>
+  <p>
+    Low-pass one image, high-pass the other; at close distance the high-freq face dominates, from afar
+    the low-freq structure wins. I align, then use <strong>σ<sub>low</sub>=6</strong> et <strong>σ<sub>high</sub>=6</strong>.
+    When sizes differ I center-crop to a common field of view.
+  </p>
+  <div class="figure-row">
+    <figure><img src="assets/p2/hyb_lowpass.jpg"  alt="lowpass"><figcaption><strong>Low-pass</strong></figcaption></figure>
+    <figure><img src="assets/p2/hyb_highpass.jpg" alt="highpass"><figcaption><strong>High-pass</strong></figcaption></figure>
+    <figure><img src="assets/p2/hyb_hybrid.jpg"   alt="hybrid"><figcaption><strong>Hybrid</strong></figcaption></figure>
+  </div>
 
-  <section>
-    <h2>What I learned</h2>
-    <ul>
-      <li><strong>Boundaries matter:</strong> padding and kernel size subtly change gradients.</li>
-      <li><strong>σ & α are a trade-off:</strong> more sharpness vs halos/noise.</li>
-      <li><strong>Alignment beats tweaking:</strong> for hybrids, a small misalignment kills the effect.</li>
-      <li><strong>Blur the mask:</strong> blending only works if the mask is smoothed across scales.</li>
-    </ul>
-    <p class="subtle">Code is lightweight NumPy; all results above were generated with my scripts in this repo.</p>
-  </section>
+  <h3>2.3 Gaussian & Laplacian Stacks</h3>
+  <p>
+    I build Gaussian stacks by repeated blurs, then Laplacian stacks as level-wise differences.
+    These are the backbone of the multiresolution blend; they let us mix coarse structure and fine detail
+    separately across scales.
+  </p>
+  <div class="figure-row">
+    <figure><img src="assets/p2/gauss_0.jpg" alt=""><figcaption><strong>G0</strong></figcaption></figure>
+    <figure><img src="assets/p2/gauss_1.jpg" alt=""><figcaption><strong>G1</strong></figcaption></figure>
+    <figure><img src="assets/p2/gauss_2.jpg" alt=""><figcaption><strong>G2</strong></figcaption></figure>
+    <figure><img src="assets/p2/gauss_3.jpg" alt=""><figcaption><strong>G3</strong></figcaption></figure>
+    <figure><img src="assets/p2/gauss_4.jpg" alt=""><figcaption><strong>G4</strong></figcaption></figure>
+  </div>
+  <div class="figure-row">
+    <figure><img src="assets/p2/lap_0.jpg" alt=""><figcaption><strong>L0</strong></figcaption></figure>
+    <figure><img src="assets/p2/lap_1.jpg" alt=""><figcaption><strong>L1</strong></figcaption></figure>
+    <figure><img src="assets/p2/lap_2.jpg" alt=""><figcaption><strong>L2</strong></figcaption></figure>
+    <figure><img src="assets/p2/lap_3.jpg" alt=""><figcaption><strong>L3</strong></figcaption></figure>
+    <figure><img src="assets/p2/lap_4.jpg" alt=""><figcaption><strong>L4</strong></figcaption></figure>
+  </div>
+
+  <h3>2.4 Multiresolution Blending (“Oraple”)</h3>
+  <p>
+    I blend two images using a blurred mask across the pyramid levels; fine details and coarse shapes
+    transition smoothly without hard seams. Params: <strong>levels=5</strong>, <strong>σ=2</strong>.
+  </p>
+  <div class="figure-row">
+    <figure><img src="assets/p2/blend_A.jpg"    alt="A"><figcaption><strong>Left</strong></figcaption></figure>
+    <figure><img src="assets/p2/blend_B.jpg"    alt="B"><figcaption><strong>Right</strong></figcaption></figure>
+    <figure><img src="assets/p2/blend_mask.jpg" alt="mask"><figcaption><strong>Mask</strong></figcaption></figure>
+    <figure><img src="assets/p2/blend_final.jpg"alt="final"><figcaption><strong>Blend</strong></figcaption></figure>
+  </div>
+</section>
+
+<section>
+  <h2>Notes & Takeaways</h2>
+  <ul>
+    <li><strong>Boundaries matter:</strong> padding and kernel size subtly change gradients.</li>
+    <li><strong>σ & α:</strong> boost sharpness vs. halos/noise — tune per image.</li>
+    <li><strong>Alignment first:</strong> hybrid illusions collapse if faces aren’t aligned.</li>
+    <li><strong>Blur the mask:</strong> blending only looks natural when the mask is smoothed across scales.</li>
+  </ul>
+</section>
 
 </main>
-
 <footer class="site-footer"><p>Antoine Peylet — Project 2, CS180.</p></footer>
 </body></html>
