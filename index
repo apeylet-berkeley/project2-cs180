@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CS180 Project 2 — Filtering & Hybrid Images</title>
+  <meta name="description" content="Convolutions, finite difference operators, DoG, unsharp masking, and multiresolution blending (Oraple).">
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <h1>CS180 Project 2 — Filtering & Hybrid Images</h1>
+      <p class="subtitle">Convolutions, Gradients, DoG, Sharpening, and Multiresolution Blending</p>
+      <nav class="toc">
+        <a href="#part11">1.1 Convolutions from Scratch</a>
+        <a href="#part12">1.2 Finite Difference Operator</a>
+        <a href="#part13">1.3 Derivative of Gaussian (DoG)</a>
+        <a href="#part21">2.1 Unsharp Mask (Sharpening)</a>
+        <a href="#part22">2.2 Hybrid Images</a>
+        <a href="#part23">2.3 Gaussian & Laplacian Stacks</a>
+        <a href="#part24">2.4 Multiresolution Blending</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- Part 1.1 -->
+    <section id="part11" class="card">
+      <h2>Part 1.1 — Convolutions from Scratch</h2>
+      <p>
+        We implemented 2D convolution manually (NumPy-only), applied finite difference filters
+        \(D_x, D_y\), and computed the gradient magnitude \(|\nabla I|\).
+      </p>
+      <div class="grid grid-2">
+        <figure>
+          <img src="assets/img/input_selfie.jpg" alt="Input image" />
+          <figcaption>Input image</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/img/gradient_magnitude.png" alt="Gradient magnitude" />
+          <figcaption>Gradient magnitude \(|\nabla I|\)</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/img/Dx.png" alt="Dx derivative" />
+          <figcaption>Dx (dI/dx)</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/img/Dy.png" alt="Dy derivative" />
+          <figcaption>Dy (dI/dy)</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- Part 1.2 -->
+    <section id="part12" class="card">
+      <h2>Part 1.2 — Finite Difference Operator</h2>
+      <p>
+        We applied \(D_x\) and \(D_y\) to the <em>cameraman</em> image, computed the gradient
+        magnitude, and then thresholded it to obtain an edge map while suppressing noise.
+      </p>
+      <div class="grid grid-3">
+        <figure>
+          <img src="assets/img/cameraman.png" alt="cameraman input" />
+          <figcaption>cameraman (input)</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/img/Dx.png" alt="Dx on cameraman" />
+          <figcaption>Dx</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/img/Dy.png" alt="Dy on cameraman" />
+          <figcaption>Dy</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- Part 1.3 -->
+    <section id="part13" class="card">
+      <h2>Part 1.3 — Derivative of Gaussian (DoG)</h2>
+      <p>
+        We compared two equivalent formulations: (1) blur with Gaussian \(G\) then differentiate with \(D_x,D_y\),
+        and (2) precompute DoG filters \((G*D_x, G*D_y)\) and convolve once. Smoothing before differentiation
+        reduces high-frequency noise, yielding cleaner edges.
+      </p>
+      <div class="grid grid-2">
+        <figure>
+          <img src="assets/img/dog_grad_after_blur.png" alt="Gradient after Gaussian blur" />
+          <figcaption>Gradient after Gaussian blur</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/img/gradient_magnitude.png" alt="Gradient (DoG equivalent)" />
+          <figcaption>Gradient (DoG equivalent)</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- Part 2.1 -->
+    <section id="part21" class="card">
+      <h2>Part 2.1 — Image Sharpening (Unsharp Mask)</h2>
+      <p>
+        We enhanced high frequencies using unsharp masking:
+        \(I_\text{sharp} = I + \alpha \left(I - (G * I)\right)\).
+        We also showed the single-convolution form with
+        \(K_\text{unsharp} = (1+\alpha)\,\delta - \alpha\,G\).
+      </p>
+      <div class="grid grid-3">
+        <figure>
+          <img src="assets/img/taj.jpg" alt="Original Taj" />
+          <figcaption>Original</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/img/taj_blur.png" alt="Gaussian blur" />
+          <figcaption>Blur (Gaussian)</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/img/taj_sharpen_alpha1.0.png" alt="Sharpened image" />
+          <figcaption>Sharpened (\(\alpha=1.0\))</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- Part 2.2 -->
+    <section id="part22" class="card">
+      <h2>Part 2.2 — Hybrid Images (Portraits)</h2>
+      <p class="note">
+        <strong>Reflection.</strong> I invested substantial time attempting automatic alignment (EXIF orientation,
+        Fourier–Mellin, phase correlation, and feature-based refinements). The final results did not meet expectations,
+        and I could not achieve a convincing hybrid portrait. I’m disappointed with this section, but it clarified where
+        the approach breaks and what would be needed (robust feature matching, better normalization, and careful masking).
+      </p>
+      <div class="grid grid-2">
+        <figure>
+          <img src="assets/img/input_selfie.jpg" alt="Portrait A" />
+          <figcaption>Portrait A</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/img/cameraman.png" alt="Portrait B" />
+          <figcaption>Portrait B (placeholder)</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- Part 2.3 -->
+    <section id="part23" class="card">
+      <h2>Part 2.3 — Gaussian and Laplacian Stacks</h2>
+      <p>
+        We built Gaussian and Laplacian stacks (no downsampling) to prepare for multiresolution blending.
+      </p>
+      <div class="grid grid-2">
+        <figure>
+          <img src="assets/img/stacks_example_A_part.png" alt="Example Laplacian contributions A" />
+          <figcaption>Laplacian contributions — Apple (example)</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/img/stacks_example_B_part.png" alt="Example Laplacian contributions B" />
+          <figcaption>Laplacian contributions — Orange (example)</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- Part 2.4 -->
+    <section id="part24" class="card">
+      <h2>Part 2.4 — Multiresolution Blending (Oraple)</h2>
+      <p>
+        Using Burt &amp; Adelson’s level-wise combination, we blended Apple ⊕ Orange with both a vertical mask
+        and a soft irregular mask.
+      </p>
+      <div class="grid grid-2">
+        <figure>
+          <img src="assets/img/oraple_vertical.png" alt="Oraple with vertical mask" />
+          <figcaption>Oraple — vertical seam</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/img/oraple_irregular.png" alt="Oraple with irregular mask" />
+          <figcaption>Oraple — irregular mask</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="card references">
+      <h2>References & Submission</h2>
+      <ul>
+        <li>Burt, P. J., &amp; Adelson, E. H. (1983). The Laplacian Pyramid as a Compact Image Code.</li>
+        <li>Course spec: <code>fa25/hw/proj2</code> &amp; submission guidelines.</li>
+      </ul>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>© 2025 — CS180 Project 2</p>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
